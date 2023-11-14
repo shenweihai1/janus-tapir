@@ -22,6 +22,8 @@ def options(opt):
                    default=False, action='store_true')
     opt.add_option('-t', '--enable-tcmalloc', dest='tcmalloc',
                    default=False, action='store_true')
+    opt.add_option('-J', '--enable-jemalloc', dest='jemalloc',
+                   default=False, action='store_true')
     opt.add_option('-s', '--enable-rpc-statistics', dest='rpc_s',
                    default=False, action='store_true')
     opt.add_option('-P', '--enable-piece-count', dest='pc',
@@ -43,6 +45,7 @@ def configure(conf):
     conf.load("boost")
 
     _enable_tcmalloc(conf)
+    _enable_jemalloc(conf)
     _enable_cxx11(conf)
     _enable_debug(conf)
     _enable_profile(conf)
@@ -216,9 +219,16 @@ def _enable_snappy(conf):
 
 def _enable_tcmalloc(conf):
     if Options.options.tcmalloc:
-        Logs.pprint("PINK", "tcmalloc enabled")
+        Logs.pprint("PINK", "tcmalloc enabled 2")
         conf.env.append_value("LINKFLAGS", "-Wl,--no-as-needed")
         conf.env.append_value("LINKFLAGS", "-ltcmalloc")
+        conf.env.append_value("LINKFLAGS", "-Wl,--as-needed")
+
+def _enable_jemalloc(conf):
+    if Options.options.tcmalloc:
+        Logs.pprint("PINK", "jemalloc enabled 2")
+        conf.env.append_value("LINKFLAGS", "-Wl,--no-as-needed")
+        conf.env.append_value("LINKFLAGS", "-ljemalloc")
         conf.env.append_value("LINKFLAGS", "-Wl,--as-needed")
 
 def _enable_pic(conf):

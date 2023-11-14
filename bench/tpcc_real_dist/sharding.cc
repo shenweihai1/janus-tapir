@@ -355,7 +355,7 @@ int TpccdSharding::PopulateTable(tb_info_t *tb_info, parid_t partition_id) {
     col_it++;
   }
 
-  if (tb_info->tb_name == TPCC_TB_CUSTOMER) { // XXX
+  if (tb_info->tb_name.compare(TPCC_TB_CUSTOMER)==0) { // XXX
     g_c_last_schema.add_column("c_id", mdb::Value::I32, true);
   }                                       // XXX
   verify(col_it == schema->end());
@@ -363,7 +363,7 @@ int TpccdSharding::PopulateTable(tb_info_t *tb_info, parid_t partition_id) {
   // TODO (ycui) add a vector in tb_info_t to record used values for key.
   // ???
   uint64_t loc_num_records = tb_info->num_records;
-  if (tb_info->tb_name == TPCC_TB_DISTRICT) {
+  if (tb_info->tb_name.compare(TPCC_TB_DISTRICT)==0) {
     auto n_partition = Config::GetConfig()->GetNumPartition();
     loc_num_records *= n_partition;
   }
@@ -379,6 +379,7 @@ int TpccdSharding::PopulateTable(tb_info_t *tb_info, parid_t partition_id) {
     init_index(prim_foreign_index);
     InsertRow(tb_info, partition_id, key_value, schema, table_ptr, tbl_sec_ptr);
   }
+  return 0;
 }
 
 } // namespace rococo

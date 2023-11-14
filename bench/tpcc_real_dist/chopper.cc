@@ -30,6 +30,7 @@ bool TpccRealDistChopper::IsOneRound() {
     case TPCC_STOCK_LEVEL:
       return false;
   }
+  return false;
 }
 
 TpccRealDistChopper::~TpccRealDistChopper() {

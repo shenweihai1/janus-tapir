@@ -48,6 +48,7 @@ int ClassicExecutor::PrepareLaunch(const std::vector<i32> &sids,
 //    defer->reply();
 //  }
 //  return 0;
+return 0;
 }
 
 bool ClassicExecutor::Prepare() {

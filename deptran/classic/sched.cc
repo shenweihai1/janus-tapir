@@ -207,6 +207,7 @@ int ClassicSched::CommitReplicated(TpcCommitCommand& tpc_commit_cmd) {
   }
   exec->commit_reply_(SUCCESS);
   DestroyExecutor(txn_id);
+  return 0;
 }
 
 void ClassicSched::OnLearn(ContainerCommand& cmd) {

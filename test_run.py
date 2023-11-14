@@ -7,30 +7,32 @@ run_app_     = "build/deptran_server"
 config_path_ = "config/"
 
 modes_ = [
-            "none",
-            "tpl_ww",
-            "occ",
-            "tpl_ww_paxos",
-            "occ_paxos",
+            #"none",
+            #"tpl_ww",
+            #"occ",
+            #"tpl_ww_paxos",
+            #"occ_paxos",
             "tapir",
-            "rcc",
-            "brq"
+            #"rcc",
+            #"brq"
         ]
-sites_ =       ["1c1s1p",
-                "2c2s1p",
-                "64c8s1p",
+sites_ =       [
+		#"1c1s1p",
+                #"2c2s1p",
+                #"64c8s1p",
                 "3c3s3r1p",
-                "64c8s3r1p"]
+                #"64c8s3r1p"
+	]
 benchmarks_ =  [
     "rw",
-    "tpca",
-    "tpcc",
-    "tpcc_no",
-    "tpcc_pm",
-    "tpcc_dl",
-    "tpcc_os",
-    "tpcc_sl",
-    "tpccd"
+    #"tpca",
+    #"tpcc",
+    #"tpcc_no",
+    #"tpcc_pm",
+    #"tpcc_dl",
+    #"tpcc_os",
+    #"tpcc_sl",
+    #"tpccd"
 ]
 
 concurrent_ = [
@@ -50,6 +52,7 @@ def run(m, s, b, c):
     res = "INIT"
     try:
         f = open(output_path, "w")
+        print(" ".join([run_app_, "-f", pm, "-f", ps, "-f", pb, "-P", "localhost", "-d", "10"]))
         r = call([run_app_, "-f", pm, "-f", ps, "-f", pb, "-P", "localhost", "-d", "10"],
                  stdout=f, stderr=f, timeout=5*60)
         res = "OK" if r == 0 else "Failed"

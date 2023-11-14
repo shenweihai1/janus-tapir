@@ -2,6 +2,7 @@
 
 //C++ standard library
 #include <map>
+#include <functional>
 #include <unordered_map>
 #include <unordered_set>
 #include <mutex>

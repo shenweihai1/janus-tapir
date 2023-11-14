@@ -53,6 +53,7 @@ int TapirSched::OnDecide(cmdid_t cmd_id,
   }
   DestroyExecutor(cmd_id);
   callback();
+  return 0;
 }
 
 } // namespace rococo

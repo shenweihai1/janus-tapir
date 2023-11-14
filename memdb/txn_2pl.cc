@@ -38,7 +38,7 @@ ResultSet Txn2PL::query(Table *tbl,
                         bool retrieve,
                         int64_t pid) {
 //  query_buf_t &qb = GetQueryBuf(pid);
-  if (retrieve) {
+  if (false) {
 //    Log_debug("query from buf, qb size: %d, pid: %lx, buf addr: %lx",
 //              qb.buf.size(), pid, &qb);
 //    verify(qb.buf.size() > 0);

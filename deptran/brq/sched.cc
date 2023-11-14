@@ -244,5 +244,5 @@ int BrqSched::OnInquire(cmdid_t cmd_id,
         info.callbacks_for_inquire_.size());
     waitlist_.insert(v);
   }
-
+  return 0;
 }

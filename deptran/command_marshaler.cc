@@ -63,10 +63,16 @@ rrr::Marshal &operator>>(rrr::Marshal &m, SimpleCommand &cmd) {
 }
 
 
+std::mutex md_mutex_g;
+std::mutex mdi_mutex_g;
 int ContainerCommand::RegInitializer(cmdtype_t cmd_type,
                                      function<ContainerCommand*()> init) {
-  auto pair = Initializers().insert(std::make_pair(cmd_type, init));
+  md_mutex_g.lock();
+  auto m = Initializers();
+  auto pair = m.insert(std::make_pair(cmd_type, init));
   verify(pair.second);
+  md_mutex_g.unlock();
+  return 0;
 }
 
 function<ContainerCommand*()>
@@ -78,7 +84,9 @@ ContainerCommand::GetInitializer(cmdtype_t type) {
 
 map<cmdtype_t, function<ContainerCommand*()>>&
 ContainerCommand::Initializers() {
+  mdi_mutex_g.lock();
   static map<cmdtype_t, function<ContainerCommand*()>> m;
+  mdi_mutex_g.unlock();
   return m;
 };
 

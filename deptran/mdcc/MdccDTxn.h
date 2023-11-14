@@ -39,6 +39,7 @@ namespace mdcc {
     virtual Row* CreateRow(const Schema *schema, const std::vector<Value>
     &values) {
       Log_fatal("implement %s!!", __FUNCTION__);
+      verify(0);
     }
 
     virtual bool WriteColumn(Row *row, column_id_t col_id, const Value &value, int hint_flag) override;

@@ -33,6 +33,7 @@ ballot_t MultiPaxosExecutor::Decide(ballot_t ballot, ContainerCommand& cmd) {
   max_ballot_seen_ = ballot;
   max_ballot_accepted_ = ballot;
 //  cmd_ = cmd.Clone();
+  return max_ballot_seen_;
 }
 
 } // namespace rococo

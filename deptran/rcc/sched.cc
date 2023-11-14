@@ -97,6 +97,7 @@ int RccSched::OnDispatch(const vector<SimpleCommand> &cmd,
 //  } else {
 //    job();
 //  }
+  return 0;
 }
 
 int RccSched::OnCommit(cmdid_t cmd_id,
@@ -123,6 +124,7 @@ int RccSched::OnCommit(cmdid_t cmd_id,
 //    Log_debug("graph size on commit, %d", (int) graph.size());
 ////    verify(0);
 //  }
+  return 0;
 }
 
 int RccSched::OnInquire(cmdid_t cmd_id,

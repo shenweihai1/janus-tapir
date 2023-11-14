@@ -304,6 +304,7 @@ int TpccSharding::PopulateTable(tb_info_t *tb_info_ptr, parid_t par_id) {
   }
 
 
+  return 0;
 
 }
 
