@@ -1,0 +1,189 @@
+site:
+  # each line is a partition (Paxos group), the first is the master site_name:port
+  # the last column is the learner
+  # - ["s101:7001", "s201:7101", "s301:7201"]
+  server: 
+    - ["s101:7001", "s201:7101", "s301:7201"]
+    # - ["s102:7002", "s202:7102", "s302:7202"]
+    # - ["s103:7003", "s203:7103", "s303:7203"]
+    # - ["s104:7004", "s204:7104", "s304:7204"]
+    # - ["s105:7005", "s205:7105", "s305:7205"]
+    # - ["s106:7006", "s206:7106", "s306:7206"]
+    # - ["s107:7007", "s207:7107", "s307:7207"]
+    # - ["s108:7008", "s208:7108", "s308:7208"]
+    # - ["s109:7009", "s209:7109", "s309:7209"]
+    # - ["s110:7010", "s210:7110", "s310:7210"]
+    # - ["s111:7011", "s211:7111", "s311:7211"]
+    # - ["s112:7012", "s212:7112", "s312:7212"]
+    # - ["s113:7013", "s213:7113", "s313:7213"]
+    # - ["s114:7014", "s214:7114", "s314:7214"]
+    # - ["s115:7015", "s215:7115", "s315:7215"]
+    # - ["s116:7016", "s216:7116", "s316:7216"]
+  client:
+    - [c101, c201, c301] #, c401]
+    # - [c102, c202, c302] #, c402]
+    # - [c103, c203, c303] #, c403]
+    # - [c104, c204, c304] #, c404]
+    # - [c105, c205, c305] #, c405]
+    # - [c106, c206, c306] #, c406]
+    # - [c107, c207, c307] #, c407]
+    # - [c108, c208, c308] #, c408]
+    # - [c109, c209, c309] #, c409]
+    # - [c110, c210, c310] #, c410]
+    # - [c111, c211, c311, c411]
+    # - [c112, c212, c312, c412]
+    # - [c113, c213, c313, c413]
+    # - [c114, c214, c314, c414]
+    # - [c115, c215, c315, c415]
+    # - [c116, c216, c316, c416]
+
+process:
+  s101: localhost
+  s201: localhost
+  s301: localhost
+  s102: localhost
+  s202: localhost
+  s302: localhost
+  s103: localhost
+  s203: localhost
+  s303: localhost
+  s104: localhost
+  s204: localhost
+  s304: localhost
+  s105: localhost
+  s205: localhost
+  s305: localhost
+  s106: localhost
+  s206: localhost
+  s306: localhost
+  s107: localhost
+  s207: localhost
+  s307: localhost
+  s108: localhost
+  s208: localhost
+  s308: localhost
+  s109: localhost
+  s209: localhost
+  s309: localhost
+  s110: localhost
+  s210: localhost
+  s310: localhost
+  s111: localhost
+  s211: localhost
+  s311: localhost
+  s112: localhost
+  s212: localhost
+  s312: localhost
+  s113: localhost
+  s213: localhost
+  s313: localhost
+  s114: localhost
+  s214: localhost
+  s314: localhost
+  s115: localhost
+  s215: localhost
+  s315: localhost
+  s116: localhost
+  s216: localhost
+  s316: localhost
+  c101: localhost
+  c201: localhost
+  c301: localhost
+  c401: localhost
+  c501: localhost
+  c601: localhost
+  c102: localhost
+  c202: localhost
+  c302: localhost
+  c402: localhost
+  c502: localhost
+  c602: localhost
+  c103: localhost
+  c203: localhost
+  c303: localhost
+  c403: localhost
+  c503: localhost
+  c603: localhost
+  c104: localhost
+  c204: localhost
+  c304: localhost
+  c404: localhost
+  c504: localhost
+  c604: localhost
+  c105: localhost
+  c205: localhost
+  c305: localhost
+  c405: localhost
+  c505: localhost
+  c605: localhost
+  c106: localhost
+  c206: localhost
+  c306: localhost
+  c406: localhost
+  c506: localhost
+  c606: localhost
+  c107: localhost
+  c207: localhost
+  c307: localhost
+  c407: localhost
+  c507: localhost
+  c607: localhost
+  c108: localhost
+  c208: localhost
+  c308: localhost
+  c408: localhost
+  c508: localhost
+  c608: localhost
+  c109: localhost
+  c209: localhost
+  c309: localhost
+  c409: localhost
+  c509: localhost
+  c609: localhost
+  c110: localhost
+  c210: localhost
+  c310: localhost
+  c410: localhost
+  c510: localhost
+  c610: localhost
+  c111: localhost
+  c211: localhost
+  c311: localhost
+  c411: localhost
+  c511: localhost
+  c611: localhost
+  c112: localhost
+  c212: localhost
+  c312: localhost
+  c412: localhost
+  c512: localhost
+  c612: localhost
+  c113: localhost
+  c213: localhost
+  c313: localhost
+  c413: localhost
+  c513: localhost
+  c613: localhost
+  c114: localhost
+  c214: localhost
+  c314: localhost
+  c414: localhost
+  c514: localhost
+  c614: localhost
+  c115: localhost
+  c215: localhost
+  c315: localhost
+  c415: localhost
+  c515: localhost
+  c615: localhost
+  c116: localhost
+  c216: localhost
+  c316: localhost
+  c416: localhost
+  c516: localhost
+  c616: localhost
+
+# process_name - host_addr map
+host:
+  localhost: 127.0.0.1
+  

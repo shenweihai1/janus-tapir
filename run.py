@@ -38,6 +38,9 @@ LOG_FILE_LEVEL = logging.DEBUG
 logger = logging.getLogger('janus')
 #logger.addHandler(logging.StreamHandler())
 
+
+cmd_op = open("./cmds.sh", "w+")
+
 cwd = os.getcwd()
 deptran_home, ff = os.path.split(os.path.realpath(__file__))
 g_log_dir = deptran_home + "/log"
@@ -229,6 +232,7 @@ class TxnInfo(object):
                 att_latencies[key] = self.mid_attempt_latencies[att_index]
             else:
                 att_latencies[key] = 9999.99
+        config['n_concurrent'] = 1
         num_clients = sum([len(x)
                            for x in config['site']['client']]) * \
                       config["n_concurrent"]
@@ -511,6 +515,7 @@ class ClientController(object):
             total_table.append(rows[0])
             interval_table.append(rows[1])
         logger.info("total_time: {}".format(total_time))
+        print("total_commits:" + str(self.commit_txn) + "\n")
         total_table.append(["----", "Total", self.start_txn, self.total_txn, self.total_try, self.commit_txn, int(round(self.commit_txn / total_time))])
         interval_total_row = ["----", "Total", self.start_txn - self.pre_start_txn, self.total_txn - self.pre_total_txn, self.total_try - self.pre_total_try, interval_commits, int(round((self.commit_txn - self.pre_commit_txn) / interval_time))]
         interval_total_row.extend([0.0 for x in g_latencies_header])
@@ -776,7 +781,7 @@ class ServerController(object):
 
     def gen_process_cmd(self, process, host_process_counts):
         cmd = []
-        cmd.append("cd " + deptran_home + "; ")
+        cmd.append("set +o bgnice; cd " + deptran_home + "; ")
         cmd.append("mkdir -p " + self.log_dir + "; ")
         if (len(self.recording_path) != 0):
             recording = " -r '" + self.recording_path + "/deptran_server_" + process.name + "' "
@@ -814,6 +819,9 @@ class ServerController(object):
             cmd = self.gen_process_cmd(process, host_process_counts)
             logger.debug("running: %s", cmd)
             subprocess.call(['ssh', '-f',process.host_address, cmd])
+            cmd_op.write('ssh ' + process.host_address + ' "' + cmd + '"' + "\n")
+            cmd_op.write("sleep 0.1\n\n")
+            cmd_op.flush()
 
         logger.debug(self.process_infos)
 
