@@ -16,18 +16,18 @@ void ServerWorker::SetupHeartbeat() {
   auto timeout = Config::GetConfig()->get_ctrl_timeout();
   scsi_ = new ServerControlServiceImpl(timeout);
   int n_io_threads = 1;
-  svr_hb_poll_mgr_g = new rrr::PollMgr(n_io_threads);
-  hb_thread_pool_g = new rrr::ThreadPool(1);
-  hb_rpc_server_ = new rrr::Server(svr_hb_poll_mgr_g, hb_thread_pool_g);
+  //svr_hb_poll_mgr_g = new rrr::PollMgr(n_io_threads);
+  //hb_thread_pool_g = new rrr::ThreadPool(1);
+  svr_hb_poll_mgr_g = svr_poll_mgr_;
+  hb_thread_pool_g = svr_thread_pool_;
+  hb_rpc_server_ = new rrr::Server(svr_hb_poll_mgr_g, hb_thread_pool_g); // error here?
   hb_rpc_server_->reg(scsi_);
-
   auto port = this->site_info_->port + ServerWorker::CtrlPortDelta;
   std::string addr_port = std::string("0.0.0.0:") +
       std::to_string(port);
   hb_rpc_server_->start(addr_port.c_str());
   if (hb_rpc_server_ != nullptr) {
-//    Log_info("notify ready to control script for %s", bind_addr.c_str());
-    scsi_->set_ready();
+    scsi_->set_ready(); /// it is here;
   }
   Log_info("heartbeat setup for %s on %s",
            this->site_info_->name.c_str(), addr_port.c_str());
@@ -148,13 +148,13 @@ void ServerWorker::SetupService() {
   }
 
   auto &alarm = TimeoutALock::get_alarm_s();
-  ServerWorker::svr_poll_mgr_->add(&alarm);
+// ServerWorker::svr_poll_mgr_->add(&alarm);
 
   uint32_t num_threads = 1;
-  thread_pool_g = new base::ThreadPool(num_threads);
+ // thread_pool_g = new base::ThreadPool(num_threads);
 
   // init rrr::Server
-  rpc_server_ = new rrr::Server(svr_poll_mgr_, thread_pool_g);
+  rpc_server_ = new rrr::Server(svr_poll_mgr_, svr_thread_pool_);
 
   // reg services
   for (auto service : services_) {
@@ -180,8 +180,10 @@ void ServerWorker::WaitForShutdown() {
     scsi_->wait_for_shutdown();
     delete hb_rpc_server_;
     delete scsi_;
-    svr_hb_poll_mgr_g->release();
-    hb_thread_pool_g->release();
+    if (svr_hb_poll_mgr_g != svr_poll_mgr_)
+      svr_hb_poll_mgr_g->release();
+    if (hb_thread_pool_g != svr_thread_pool_)
+      hb_thread_pool_g->release();
 
     for (auto service : services_) {
       if (DepTranServiceImpl *s = dynamic_cast<DepTranServiceImpl*>(service)) {
@@ -203,14 +205,14 @@ void ServerWorker::WaitForShutdown() {
 void ServerWorker::SetupCommo() {
   verify(svr_poll_mgr_ != nullptr);
   if (dtxn_frame_) {
-    dtxn_commo_ = dtxn_frame_->CreateCommo();
+    dtxn_commo_ = dtxn_frame_->CreateCommo(svr_poll_mgr_);
     if (dtxn_commo_) {
       dtxn_commo_->loc_id_ = site_info_->locale_id;
     }
     dtxn_sched_->commo_ = dtxn_commo_;
   }
   if (rep_frame_) {
-    rep_commo_ = rep_frame_->CreateCommo();
+    rep_commo_ = rep_frame_->CreateCommo(svr_poll_mgr_);
     if (rep_commo_) {
       rep_commo_->loc_id_ = site_info_->locale_id;
     }
@@ -229,7 +231,7 @@ void ServerWorker::ShutDown() {
 //    delete dtxn_commo_;
 //  if (rep_commo_)
 //    delete rep_commo_;
-  thread_pool_g->release();
+//  thread_pool_g->release();
   svr_poll_mgr_->release();
 }
 } // namespace rococo

@@ -32,7 +32,10 @@ void RWTxnGenerator::GenerateWriteRequest(
   req->txn_type_ = RW_BENCHMARK_W_TXN;
   req->input_ = {
       {0, Value((i32) id)},
-      {1, Value((i32) RandomGenerator::rand(0, 10000))}
+      {1, Value((i32) RandomGenerator::rand(100, 1000000 - 100))},
+      {2, Value((i32) RandomGenerator::rand(100, 1000000 - 100))},
+      {3, Value((i32) RandomGenerator::rand(100, 1000000 - 100))},
+      {4, Value((i32) RandomGenerator::rand(100, 1000000 - 100))},
   };
 }
 
@@ -41,7 +44,11 @@ void RWTxnGenerator::GenerateReadRequest(
   auto id = GetId(cid);
   req->txn_type_ = RW_BENCHMARK_R_TXN;
   req->input_ = {
-      {0, Value((i32) id)}
+      {0, Value((i32) id)},
+      {1, Value((i32) RandomGenerator::rand(100, 1000000 - 100))},
+      {2, Value((i32) RandomGenerator::rand(100, 1000000 - 100))},
+      {3, Value((i32) RandomGenerator::rand(100, 1000000 - 100))},
+      {4, Value((i32) RandomGenerator::rand(100, 1000000 - 100))},
   };
 }
 

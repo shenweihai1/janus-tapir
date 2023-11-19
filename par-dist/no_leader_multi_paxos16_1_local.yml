@@ -1,0 +1,141 @@
+
+site:
+  server: 
+    - ["s0101:7001", "s0201:7101", "s0301:7201"]
+    - ["s0102:7002", "s0202:7102", "s0302:7202"]
+    - ["s0103:7003", "s0203:7103", "s0303:7203"]
+    - ["s0104:7004", "s0204:7104", "s0304:7204"]
+    - ["s0105:7005", "s0205:7105", "s0305:7205"]
+    - ["s0106:7006", "s0206:7106", "s0306:7206"]
+    - ["s0107:7007", "s0207:7107", "s0307:7207"]
+    - ["s0108:7008", "s0208:7108", "s0308:7208"]
+    - ["s0109:7009", "s0209:7109", "s0309:7209"]
+    - ["s0110:7010", "s0210:7110", "s0310:7210"]
+    - ["s0111:7011", "s0211:7111", "s0311:7211"]
+    - ["s0112:7012", "s0212:7112", "s0312:7212"]
+    - ["s0113:7013", "s0213:7113", "s0313:7213"]
+    - ["s0114:7014", "s0214:7114", "s0314:7214"]
+    - ["s0115:7015", "s0215:7115", "s0315:7215"]
+    - ["s0116:7016", "s0216:7116", "s0316:7216"]
+
+  client:
+    - [c0101, c0201, c0301]
+    - [c0102, c0202, c0302]
+    - [c0103, c0203, c0303]
+    - [c0104, c0204, c0304]
+    - [c0105, c0205, c0305]
+    - [c0106, c0206, c0306]
+    - [c0107, c0207, c0307]
+    - [c0108, c0208, c0308]
+    - [c0109, c0209, c0309]
+    - [c0110, c0210, c0310]
+    - [c0111, c0211, c0311]
+    - [c0112, c0212, c0312]
+    - [c0113, c0213, c0313]
+    - [c0114, c0214, c0314]
+    - [c0115, c0215, c0315]
+    - [c0116, c0216, c0316]
+
+process:
+  s0101: localhost
+  s0201: localhost
+  s0301: localhost
+  s0102: localhost
+  s0202: localhost
+  s0302: localhost
+  s0103: localhost
+  s0203: localhost
+  s0303: localhost
+  s0104: localhost
+  s0204: localhost
+  s0304: localhost
+  s0105: localhost
+  s0205: localhost
+  s0305: localhost
+  s0106: localhost
+  s0206: localhost
+  s0306: localhost
+  s0107: localhost
+  s0207: localhost
+  s0307: localhost
+  s0108: localhost
+  s0208: localhost
+  s0308: localhost
+  s0109: localhost
+  s0209: localhost
+  s0309: localhost
+  s0110: localhost
+  s0210: localhost
+  s0310: localhost
+  s0111: localhost
+  s0211: localhost
+  s0311: localhost
+  s0112: localhost
+  s0212: localhost
+  s0312: localhost
+  s0113: localhost
+  s0213: localhost
+  s0313: localhost
+  s0114: localhost
+  s0214: localhost
+  s0314: localhost
+  s0115: localhost
+  s0215: localhost
+  s0315: localhost
+  s0116: localhost
+  s0216: localhost
+  s0316: localhost
+  c0101: localhost
+  c0201: localhost
+  c0301: localhost
+  c0102: localhost
+  c0202: localhost
+  c0302: localhost
+  c0103: localhost
+  c0203: localhost
+  c0303: localhost
+  c0104: localhost
+  c0204: localhost
+  c0304: localhost
+  c0105: localhost
+  c0205: localhost
+  c0305: localhost
+  c0106: localhost
+  c0206: localhost
+  c0306: localhost
+  c0107: localhost
+  c0207: localhost
+  c0307: localhost
+  c0108: localhost
+  c0208: localhost
+  c0308: localhost
+  c0109: localhost
+  c0209: localhost
+  c0309: localhost
+  c0110: localhost
+  c0210: localhost
+  c0310: localhost
+  c0111: localhost
+  c0211: localhost
+  c0311: localhost
+  c0112: localhost
+  c0212: localhost
+  c0312: localhost
+  c0113: localhost
+  c0213: localhost
+  c0313: localhost
+  c0114: localhost
+  c0214: localhost
+  c0314: localhost
+  c0115: localhost
+  c0215: localhost
+  c0315: localhost
+  c0116: localhost
+  c0216: localhost
+  c0316: localhost
+
+# process_name - host_addr map
+host:
+  localhost: 127.0.0.1
+
+  

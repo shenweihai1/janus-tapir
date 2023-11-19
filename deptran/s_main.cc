@@ -7,6 +7,7 @@
 #include "command_marshaler.h"
 #include "benchmark_control_rpc.h"
 #include "server_worker.h"
+#include <sys/resource.h>
 
 #ifdef CPU_PROFILE
 # include <google/profiler.h>
@@ -85,15 +86,21 @@ void server_launch_worker(vector<Config::SiteInfo>& server_sites) {
       Log_info("start communication for site %d", (int)worker.site_info_->id);
       worker.SetupCommo();
       Log_info("site %d launched!", (int)site_info.id);
+      worker.launched_ = true;
     }));
+  }
+
+  for (auto& worker : svr_workers_g) {
+    while (!worker.launched_) {
+      sleep(1);
+    }
   }
 
   Log_info("waiting for client setup threads.");
   for (auto& th: setup_ths) {
     th.join();
   }
-  Log_info("done waiting for client setup threads.");
-
+  Log_info("done waiting for client setup threads:%llu.", svr_workers_g.size());
 
   for (ServerWorker& worker : svr_workers_g) {
     // start communicator after all servers are running
@@ -127,10 +134,19 @@ void wait_for_clients() {
   }
 }
 
+void setup_ulimit() {
+  struct rlimit limit;
+  /* Get max number of files. */
+  if (getrlimit(RLIMIT_NOFILE, &limit) != 0) {
+    Log_fatal("getrlimit() failed with errno=%d", errno);
+  }
+  Log_info("ulimit -n is %d", (int)limit.rlim_cur);
+}
+
 int main(int argc, char *argv[]) {
   check_current_path();
-  
   Log_info("starting process %ld", getpid());
+  setup_ulimit();
 
   // read configuration
   int ret = Config::CreateConfig(argc, argv);

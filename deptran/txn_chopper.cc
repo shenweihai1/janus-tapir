@@ -119,7 +119,7 @@ map<parid_t, vector<SimpleCommand*>> TxnCommand::GetReadyCmds() {
       status = INIT;
       SimpleCommand *cmd = new SimpleCommand();
       cmd->inn_id_ = pi;
-      cmd->partition_id_ = GetPiecePartitionId(pi);
+      cmd->partition_id_ = GetPiecePartitionId(pi); // get par-id
       cmd->type_ = pi;
       cmd->root_id_ = id_;
       cmd->root_type_ = type_;
