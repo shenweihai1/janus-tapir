@@ -591,27 +591,24 @@ class ServerController(object):
         self.config = config
         self.timeout = config['args'].s_timeout
         self.log_dir = config['args'].log_dir
-        taskset = config['args'].s_taskset
+        taskset = int(config['args'].s_taskset)
         self.recording_path = config['args'].recording_path
         self.process_infos = process_infos
         self.rpc_proxy = dict()
         self.server_kill()
 
-        if (taskset == 1):
-            # set task on CPU 1
-            self.taskset_func = lambda x: "taskset -c " + str(2 * x + 16)
-            logger.info("Setting servers on CPU 1")
-        elif (taskset == 2):
-            # set task on CPU 0, odd number cores, no overlapping with irq cores
-            self.taskset_func = lambda x: "taskset -c " + str(2 * x + 1)
-            logger.info("Setting servers on CPU 0, odd number cores")
-        elif (taskset == 3):
-            # set task on CPU 0, even number cores, overlapping with irq cores
-            self.taskset_func = lambda x: "taskset -c " + str(2 * x)
-            logger.info("Setting servers on CPU 0, even number cores")
-        else:
-            self.taskset_func = lambda x: ""
-            logger.info("No taskset, auto scheduling")
+        def task_def(x):
+            # donot need variable x
+            t = ""
+            t = "0-" + str(taskset-1)
+
+            if taskset == 0:
+                return ""
+
+            return "taskset -ac " + t
+
+        self.taskset_func = task_def
+
         self.pre_statistics = dict()
         self.pre_time = time.time()
 
@@ -782,6 +779,7 @@ class ServerController(object):
     def gen_process_cmd(self, process, host_process_counts):
         cmd = []
         cmd.append("set +o bgnice; cd " + deptran_home + "; ")
+        cmd.append("ulimit -n 20000; ")
         cmd.append("mkdir -p " + self.log_dir + "; ")
         if (len(self.recording_path) != 0):
             recording = " -r '" + self.recording_path + "/deptran_server_" + process.name + "' "
