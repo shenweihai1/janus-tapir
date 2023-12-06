@@ -2,12 +2,14 @@
 
 # python system modules
 import os
+import signal
 import sys
 import time
 import shutil
 import logging
 import subprocess
 import multiprocessing
+import datetime
 import argparse
 import traceback
 import itertools
@@ -20,6 +22,7 @@ from multiprocessing import Value
 from multiprocessing import Lock
 import yaml
 import tempfile
+from collections import OrderedDict
 
 # third-party python modules
 from tabulate import tabulate
@@ -27,19 +30,32 @@ from tabulate import tabulate
 # deptran python modules
 sys.path += os.path.abspath(os.path.join(os.path.split(__file__)[0], "./rrr/pylib")),
 sys.path += os.path.abspath(os.path.join(os.path.split(__file__)[0], "./deptran")),
+
 from simplerpc import Client
 from simplerpc.marshal import Marshal
 from deptran.rcc_rpc import ServerControlProxy
 from deptran.rcc_rpc import ClientControlProxy
 from pylib import ps
 
-LOG_LEVEL = logging.INFO
-LOG_FILE_LEVEL = logging.DEBUG
-logger = logging.getLogger('janus')
-#logger.addHandler(logging.StreamHandler())
-
+def getNow():
+    return "%s" % datetime.datetime.now()
 
 cmd_op = open("./cmds.sh", "w+")
+cmd_op.write("rm ./log/*.err ./log/*.log\n")
+cmd_op.flush()
+
+g_exit = False
+def signal_handler(sig, frame):
+    print('You pressed Ctrl+C!')
+    global g_exit
+    g_exit = True
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+
+LOG_LEVEL = logging.INFO
+LOG_FILE_LEVEL = logging.INFO
+logger = logging.getLogger('janus')
 
 cwd = os.getcwd()
 deptran_home, ff = os.path.split(os.path.realpath(__file__))
@@ -78,10 +94,14 @@ class TxnInfo(object):
         self.this_latencies = []
         self.last_latencies = []
         self.attempt_latencies = []
+        self.all_latencies = []
         self.n_try = []
         self.min_interval = 0.0
         self.update_latency = False
+        
+        self.n_concurrent = 2000;
 
+        self.mid_retry_exhausted = 0
         self.mid_status = 0 # 0: not started, 1: ongoing, 3: end
         self.mid_pre_start_txn = 0
         self.mid_start_txn = 0
@@ -93,6 +113,7 @@ class TxnInfo(object):
         self.mid_commit_txn = 0
         self.mid_time = 0.0
         self.mid_latencies = []
+        self.mid_all_latencies = []
         self.mid_attempt_latencies = []
         self.mid_n_try = []
 
@@ -104,6 +125,7 @@ class TxnInfo(object):
         self.total_txn = 0
         self.total_try = 0
         self.commit_txn = 0
+        self.mid_retry_exhausted = 0
         self.this_latencies = []
         self.min_interval = g_max_latency
         self.attempt_latencies = []
@@ -122,7 +144,7 @@ class TxnInfo(object):
 
     def push_res(self, start_txn, total_txn, total_try, commit_txn,
             this_latencies, last_latencies, latencies,
-            attempt_latencies, interval_time, n_tried):
+            attempt_latencies, interval_time, n_tried, n_retry_exhausted):
         self.start_txn += start_txn
         self.total_txn += total_txn
         self.total_try += total_try
@@ -130,6 +152,7 @@ class TxnInfo(object):
         if self.min_interval > interval_time:
             self.min_interval = interval_time
 
+        #print("XXXXXXXXXXXXXXXXX - mid-status: ", self.mid_status);
         if self.mid_status == 0:
             logger.debug("before recording period: {}".format(self.txn_type))
             self.mid_pre_start_txn += start_txn
@@ -139,7 +162,9 @@ class TxnInfo(object):
             logger.debug("mid_pre_commit_txn (+{}): {}".format(commit_txn, self.mid_pre_commit_txn))
         elif self.mid_status == 1:
             logger.debug("during recording period!!! {}".format(self.txn_type))
-            self.mid_latencies.extend(latencies)
+            self.mid_latencies.extend(latencies); ### extend latencies
+            #print("XXXXXXXXXXXXXXXXX: ", latencies);
+            self.mid_all_latencies.extend(self.mid_latencies)
             self.mid_attempt_latencies.extend(attempt_latencies)
             self.mid_time += interval_time
             self.mid_n_try.extend(n_tried)
@@ -147,8 +172,9 @@ class TxnInfo(object):
             self.mid_total_txn += total_txn
             self.mid_total_try += total_try
             self.mid_commit_txn += commit_txn
-            logger.debug("mid_commit_txn (+{}): {}".format(commit_txn, self.mid_commit_txn))
-            logger.debug("self.mid_latencies: {}".format(self.mid_latencies))
+            self.mid_retry_exhausted += n_retry_exhausted
+            #logger.debug("mid_commit_txn (+{}): {}".format(commit_txn, self.mid_commit_txn))
+            #logger.debug("self.mid_latencies: {}".format(self.mid_latencies))
 
     def get_res(self, interval_time, total_time, set_max,
             all_total_commits, all_interval_commits, do_sample, do_sample_lock):
@@ -211,11 +237,21 @@ class TxnInfo(object):
         logger.info("mid_pre_commit_txn: {}".format(self.mid_pre_commit_txn))
         logger.info("mid_time = {}".format(self.mid_time))
 
+        if self.mid_retry_exhausted > 0:
+            m = [0]
+            if len(self.mid_latencies) > 0:
+              m = [max(self.mid_latencies)]
+            self.mid_all_latencies.extend(m * self.mid_retry_exhausted)
+
         self.mid_latencies.sort()
+        self.mid_all_latencies.sort()
         self.mid_attempt_latencies.sort()
         self.mid_n_try.sort()
 
+        NO_VALUE = 999999.99
+
         latencies = {}
+        all_latencies = {}
         att_latencies = {}
         for percent in g_latencies_percentage:
             logger.info("percent: {}".format(percent))
@@ -225,17 +261,23 @@ class TxnInfo(object):
                 index = int(math.ceil(percent/100*len(self.mid_latencies)))-1
                 latencies[key] = self.mid_latencies[index]
             else:
-                latencies[key] = 9999.99
+                latencies[key] = NO_VALUE
+
+            if len(self.mid_all_latencies)>0:
+                index = int(math.ceil(percent/100*len(self.mid_all_latencies)))-1
+                all_latencies[key] = self.mid_all_latencies[index]
+            else:
+                all_latencies[key] = NO_VALUE
 
             if len(self.mid_attempt_latencies)>0:
                 att_index = int(math.ceil(percent/100*len(self.mid_attempt_latencies)))-1
                 att_latencies[key] = self.mid_attempt_latencies[att_index]
             else:
-                att_latencies[key] = 9999.99
-        config['n_concurrent'] = 1
+                att_latencies[key] = NO_VALUE
+
         num_clients = sum([len(x)
                            for x in config['site']['client']]) * \
-                      config["n_concurrent"]
+                      self.n_concurrent
 
         zipf = -1
         if 'coefficient' in config['bench']:
@@ -253,16 +295,29 @@ class TxnInfo(object):
             'attempts': tries,
             'commits': commit_txn,
             'tps': tps,
-            'zipf': zipf
+            'zipf': zipf,
+            'experiment_id': int(config['args'].experiment_id),
+            'retries_exhausted_cnt': self.mid_retry_exhausted
         }
+
+
         self.data['latency'] = {}
         self.data['latency'].update(latencies)
         if len(self.mid_latencies)>0:
             self.data['latency']['min'] = self.mid_latencies[0]
             self.data['latency']['max'] = self.mid_latencies[len(self.mid_latencies)-1]
         else:
-            self.data['latency']['min'] = 9999.99
-            self.data['latency']['max'] = 9999.99
+            self.data['latency']['min'] = NO_VALUE
+            self.data['latency']['max'] = NO_VALUE
+
+        self.data['all_latency'] = {}
+        self.data['all_latency'].update(all_latencies)
+        if len(self.mid_all_latencies)>0:
+            self.data['all_latency']['min'] = self.mid_all_latencies[0]
+            self.data['all_latency']['max'] = self.mid_all_latencies[len(self.mid_all_latencies)-1]
+        else:
+            self.data['all_latency']['min'] = NO_VALUE
+            self.data['all_latency']['max'] = NO_VALUE
 
         self.data['att_latency'] = {}
         self.data['att_latency'].update(att_latencies)
@@ -272,8 +327,8 @@ class TxnInfo(object):
                 len(self.mid_attempt_latencies)-1
             ]
         else:
-            self.data['att_latency']['min'] = 9999.99
-            self.data['att_latency']['max'] = 9999.99
+            self.data['att_latency']['min'] = NO_VALUE
+            self.data['att_latency']['max'] = NO_VALUE
 
         logger.info("\n__Data__\n{}\n__EndData__\n".format(yaml.dump(self.data)))
 
@@ -343,7 +398,7 @@ class ClientController(object):
         sites = ProcessInfo.get_sites(self.process_infos,
                                       SiteInfo.SiteType.Client)
         for site in sites:
-            site.connect_rpc(300)
+            site.connect_rpc(30)
             logger.info("Connected to client site %s @ %s", site.name, site.process.host_address)
 
         barriers = []
@@ -357,10 +412,14 @@ class ClientController(object):
         res = sites[0].process.client_rpc_proxy.sync_client_get_txn_names()
         for k, v in res.items():
             logger.debug("txn: %s - %s", v, k)
-            self.txn_names[k] = v
+            self.txn_names[k] = v.decode()
 
         self.start_client()
         logger.info("Clients started")
+
+        # benchmark_record once
+        # XXX
+        # time.sleep(35)
 
         start = time.time()
         try:
@@ -399,6 +458,7 @@ class ClientController(object):
         logger.info("contact {} client rpc proxies".format(len(rpc_proxy)))
         self.num_proxies = len(rpc_proxy)
 
+
         while (len(rpc_proxy) != len(self.finish_set)):
             logger.debug("top client heartbeat; timeout {}".format(self.timeout))
             for k in self.txn_infos.keys():
@@ -428,6 +488,10 @@ class ClientController(object):
                     self.total_txn += res.txn_info[txn_type].total_txn
                     self.total_try += res.txn_info[txn_type].total_try
                     self.commit_txn += res.txn_info[txn_type].commit_txn
+
+                    #print("num_exhausted: ", res.txn_info[txn_type].num_exhausted)
+                    #print("num lat: ", len(res.txn_info[txn_type].attempt_latency))
+
                     self.txn_infos[txn_type].push_res(
                         res.txn_info[txn_type].start_txn,
                         res.txn_info[txn_type].total_txn,
@@ -438,7 +502,8 @@ class ClientController(object):
                         res.txn_info[txn_type].interval_latency,
                         res.txn_info[txn_type].attempt_latency,
                         period_time,
-                        res.txn_info[txn_type].num_try)
+                        res.txn_info[txn_type].num_try,
+                        res.txn_info[txn_type].num_exhausted)
 
                 logger.debug("timing from server: run_sec {:.2f}; run_nsec {:.2f}".format(res.run_sec, res.run_nsec))
                 self.run_sec += res.run_sec
@@ -458,15 +523,16 @@ class ClientController(object):
 
             self.cur_time = time.time()
             need_break = self.print_stage_result(do_sample, do_sample_lock)
+            need_break = False
             if (need_break):
                 break
             else:
                 time.sleep(self.timeout)
 
     def print_stage_result(self, do_sample, do_sample_lock):
-        sites = ProcessInfo.get_sites(self.process_infos,
-                                      SiteInfo.SiteType.Client)
-
+        # sites = ProcessInfo.get_sites(self.process_infos,
+        #                               SiteInfo.SiteType.Client)
+       
         interval_time = (self.run_sec - self.pre_run_sec) + \
                         ((self.run_nsec - self.pre_run_nsec) / ONE_BILLION)
 
@@ -474,6 +540,9 @@ class ClientController(object):
 
         progress = int(round(100 * total_time / self.duration))
         logger.info("Progress: {}".format(progress))
+     
+        if (progress > 100):
+           sys.exit(0);
 
         #if (self.print_max):
         #    self.print_max = False
@@ -554,12 +623,12 @@ class ClientController(object):
         logger.info("killing clients ...")
         sites = ProcessInfo.get_sites(self.process_infos, SiteInfo.SiteType.Client)
         hosts = { s.process.host_address for s in sites }
-        ps.killall(hosts, "deptran_server", "-9 -w")
+        ps.killall(hosts, "deptran_server", "-9")
 
     def client_shutdown(self):
         logger.debug("Shutting down clients ...")
         sites = ProcessInfo.get_sites(self.process_infos, SiteInfo.SiteType.Client)
-        for site in self.sites:
+        for site in sites:
             try:
                 site.rpc_proxy.sync_client_shutdown()
             except:
@@ -592,19 +661,20 @@ class ServerController(object):
         self.timeout = config['args'].s_timeout
         self.log_dir = config['args'].log_dir
         taskset = int(config['args'].s_taskset)
+        n_concurrent = int(config['args'].n_concurrent)
         self.recording_path = config['args'].recording_path
         self.process_infos = process_infos
         self.rpc_proxy = dict()
         self.server_kill()
 
-        def task_def(x):
+        def task_def(x, name):
             # donot need variable x
             t = ""
             t = "0-" + str(taskset-1)
 
             if taskset == 0:
                 return ""
-
+            
             return "taskset -ac " + t
 
         self.taskset_func = task_def
@@ -613,10 +683,10 @@ class ServerController(object):
         self.pre_time = time.time()
 
     def server_kill(self):
-        hosts = { pi.host_address for pi in self.process_infos.itervalues() }
+        hosts = { pi.host_address for pi in self.process_infos.values() }
         ps_output = ps.ps(hosts, "deptran_server")
         logger.debug("Existing Server or Client Processes:\n{}".format(ps_output))
-        ps.killall(hosts, "deptran_server", "-9 -w")
+        ps.killall(hosts, "deptran_server", "-9")
         ps_output = ps.ps(hosts, "deptran_server")
         logger.debug("Existing Server or Client After Kill:\n{}".format(ps_output))
 
@@ -659,13 +729,15 @@ class ServerController(object):
                 logger.error(traceback.format_exc())
 
 
+    # this is heart_beat
     def server_heart_beat(self, cond, s_init_finish, do_sample, do_sample_lock):
-        logger.debug("in server_heart_beat")
+        logger.info("in server_heart_beat")
         sites = []
         try:
             sites = ProcessInfo.get_sites(self.process_infos,
                                           SiteInfo.SiteType.Server)
             for site in sites:
+                logger.info("start to site %s @ %s", site.name, site.process.host_address)
                 site.connect_rpc(300)
                 logger.info("Connected to site %s @ %s", site.name, site.process.host_address)
 
@@ -673,6 +745,7 @@ class ServerController(object):
 
                 logger.info("call sync_server_ready on site {}".format(site.id))
                 while (site.rpc_proxy.sync_server_ready() != 1):
+                    logger.debug("site.rpc_proxy.sync_server_ready returns")
                     time.sleep(1) # waiting for server to initialize
                 logger.info("site %s ready", site.name)
 
@@ -685,8 +758,8 @@ class ServerController(object):
             avg_r_sz = 0.0
             avg_cpu_util = 0.0
             sample_result = []
-            while (True):
-                logger.debug("top server heartbeat loop")
+            while (not g_exit):
+                logger.info("top server heartbeat loop")
                 do_statistics = False
                 do_sample_lock.acquire()
                 if do_sample.value == 1:
@@ -702,16 +775,17 @@ class ServerController(object):
                 cpu_util = [0.0] * len(sites)
                 futures = []
 
+                do_statistics = False 
+
                 try:
                     for site in sites:
-                        logger.debug("ping %s", site.name)
                         if do_statistics:
                             futures.append(site.rpc_proxy.async_server_heart_beat_with_data())
                         else:
                             futures.append(site.rpc_proxy.async_server_heart_beat())
                 except:
                     logger.fatal("server heart beat failure")
-                    sys.exit(1)
+                    break
 
 
                 i = 0
@@ -723,6 +797,7 @@ class ServerController(object):
                         r_sz_sum += ret.r_sz_sum
                         r_sz_num += ret.r_sz_num
                         cpu_util[i] = ret.cpu_util
+                        logger.info("CPU {}: {}".format(i, ret.cpu_util))
                         for k, v in ret.statistics.items():
                             if k not in statistics:
                                 statistics[k] = ServerResponse(v)
@@ -778,8 +853,12 @@ class ServerController(object):
 
     def gen_process_cmd(self, process, host_process_counts):
         cmd = []
-        cmd.append("set +o bgnice; cd " + deptran_home + "; ")
-        cmd.append("ulimit -n 20000; ")
+        # set +o bgnice; 
+        cmd.append("cd " + deptran_home + "; ")
+        if "p" in process.name:
+            cmd.append("ulimit -n 20000; ")
+        else:
+            cmd.append("ulimit -n 20000; ")
         cmd.append("mkdir -p " + self.log_dir + "; ")
         if (len(self.recording_path) != 0):
             recording = " -r '" + self.recording_path + "/deptran_server_" + process.name + "' "
@@ -787,13 +866,13 @@ class ServerController(object):
         else:
             recording = ""
 
-        s = "nohup " + self.taskset_func(host_process_counts[process.host_address]) + \
-               " ./build/deptran_server " + \
-               "-b " + \
-               "-d " + str(self.config['args'].c_duration) + " "
+        s = "nohup " + self.taskset_func(host_process_counts[process.host_address], process.name) + \
+            " ./build/deptran_server " + \
+            "-d " + str(self.config['args'].c_duration) + " "
+
 
         for fn in self.config['args'].config_files:
-               s += "-f '" + fn + "' "
+            s += "-f '" + fn + "' "
 
         s += "-P '" + process.name + "' " + \
              "-p " + str(self.config['args'].rpc_port + process.id) + " " \
@@ -811,25 +890,46 @@ class ServerController(object):
     def start(self):
         # this current starts all the processes
         # todo: separate this into a class that starts and stops deptran
-        host_process_counts = { host_address: 0 for host_address in self.config['host'].itervalues() }
+        host_process_counts = { host_address: 0 for host_address in self.config['host'].values() }
         def run_one_server(process, process_name, host_process_counts):
             logger.info("starting %s @ %s", process_name, process.host_address)
             cmd = self.gen_process_cmd(process, host_process_counts)
             logger.debug("running: %s", cmd)
             subprocess.call(['ssh', '-f',process.host_address, cmd])
+            
+        logger.debug(self.process_infos)
+
+        t_list = []
+        for process_name, process in self.process_infos.items():
+            if process_name[0] == 'c':
+                continue
+            cmd = self.gen_process_cmd(process, host_process_counts)
             cmd_op.write('ssh ' + process.host_address + ' "' + cmd + '"' + "\n")
             cmd_op.write("sleep 0.1\n\n")
             cmd_op.flush()
 
-        logger.debug(self.process_infos)
+            time.sleep(0.1) # avoid errors such as ssh_exchange_identification: Connection closed by remote host
+            # t = Thread(target=run_one_server,
+            #            args=(process, process_name, host_process_counts,))
+            # t.start()
+            #t_list.append(t)
+        
+        cmd_op.write("sleep 10\necho 'start clients...'\n")
+        cmd_op.flush()
+        for process_name, process in self.process_infos.items():
+            if process_name[0] != 'c':
+                continue
+            cmd = self.gen_process_cmd(process, host_process_counts)
+            cmd_op.write('ssh ' + process.host_address + ' "' + cmd + '"' + "\n")
+            cmd_op.write("sleep 0.1\n\n")
+            cmd_op.flush()
+            time.sleep(0.1) # avoid errors such as ssh_exchange_identification: Connection closed by remote host
+            # t = Thread(target=run_one_server,
+            #            args=(process, process_name, host_process_counts,))
+            # t.start()
+            # t_list.append(t)
 
-        t_list = []
-        for process_name, process in self.process_infos.iteritems():
-            t = Thread(target=run_one_server,
-                       args=(process, process_name, host_process_counts,))
-            t.start()
-            t_list.append(t)
-
+        exit(0)
         for t in t_list:
             t.join()
 
@@ -840,7 +940,7 @@ def create_parser():
     parser.add_argument('-n', "--name", dest="experiment_name",
                         help="name of experiment",
                         default=None)
-
+    parser.add_argument('-id', dest="experiment_id", default="-1")
     parser.add_argument("-f", "--file", dest="config_files",
             help="read config from FILE, default is sample.yml",
             action='append',
@@ -872,12 +972,12 @@ def create_parser():
             default=0, action="store", metavar="[0|1|2]")
 
     parser.add_argument("-T", "--taskset-schema", dest="s_taskset",
-            help="Choose which core to run each server on. "
-                 "0: auto; "
-                 "1: CPU 1; "
-                 "2: CPU 0, odd cores; "
-                 "3: CPU 0, even cores;",
-            default=0, action="store", metavar="[0|1|2|3]")
+            help="Choose which core to run each server on. ",
+            default=0, action="store")
+
+    parser.add_argument("-nc", "--n_concurrent", dest="n_concurrent",
+            help="n_concurrent",
+            default=0, action="store")
 
     parser.add_argument("-c", "--client-taskset", dest="c_taskset",
             help="taskset client processes round robin", default=False,
@@ -914,6 +1014,7 @@ class TrialConfig:
         self.log_path = os.path.realpath(options.log_dir)
         self.c_interest_txn = str(options.interest_txn)
         self.rpc_port = int(options.rpc_port)
+        self.n_concurrent = int(options.n_concurrent)
 
         pass
 
@@ -995,6 +1096,7 @@ class SiteInfo:
             bind_address = "{host}:{port}".format(
                 host=self.process.host_address,
                 port=port)
+            # logger.debug("SiteInfo.connect_rpc: rpc_client bind_addr: " + bind_address)
             result = self.rpc_client.connect(bind_address)
             if time.time() - connect_start > timeout:
                 raise RuntimeError("rpc connect time out")
@@ -1017,8 +1119,10 @@ class ProcessInfo:
         self.rpc_port = rpc_port + self.id
         self.client_rpc_proxy = None
         self.sites = []
+        logger.info("process {} {} {}:{}".format(name, self.id, address, self.rpc_port))
 
     def add_site(self, site_name, site_type, port):
+        logger.info("add_site: {}, {}, {}".format(site_name, site_type, port))
         obj = SiteInfo(self, site_name, site_type, port)
         self.sites.append(obj)
         return obj
@@ -1045,7 +1149,7 @@ class ProcessInfo:
         else:
             m = ProcessInfo.server_sites
 
-        for process in process_list.itervalues():
+        for process in process_list.values():
             for site in m(process):
                 sites.append(site)
         return sites
@@ -1056,10 +1160,17 @@ def get_process_info(config):
     processes = config['process']
     sites = config['site']
 
-    process_infos = { process_name: ProcessInfo(process_name,
-                                                hosts[process_name],
-                                                config['args'].rpc_port)
-                     for (_, process_name) in processes.iteritems() }
+    # deterministically give the processes their id -- base client ctrl port assignment on this
+    sorted_processes = OrderedDict(sorted(processes.items(), key=lambda t: t[0]))
+
+
+    process_infos = {}
+    for (_, process_name) in sorted_processes.items():
+        if process_name not in process_infos:
+            process_infos[process_name] = ProcessInfo(process_name,
+                                                      hosts[process_name],
+                                                      config['args'].rpc_port)
+
     for site_type in ['server', 'client']:
         for site in itertools.chain(*sites[site_type]):
             if ':' in site:
@@ -1075,7 +1186,7 @@ def build_config(options):
     config = {'args': options}
     for c in config_files:
         with open(c, 'r') as f:
-            yml = yaml.load(f)
+            yml = yaml.safe_load(f) # yaml.load(f) depends on the version of the python-yaml
             config.update(yml)
     return config
 
@@ -1112,16 +1223,15 @@ def main():
     server_controller = None
     client_controller = None
     config = None
-
     try:
         config = build_config(create_parser().parse_args())
         setup_experiment(config)
 
         process_infos = get_process_info(config)
         server_controller = ServerController(config, process_infos)
-        logger.debug("before server_controller.start");
+        logger.debug("before server_controller.start")
         server_controller.start()
-        logger.debug("after server_controller.start");
+        logger.debug("after server_controller.start")
 
         client_controller = ClientController(config, process_infos)
 
@@ -1133,15 +1243,17 @@ def main():
             process.join()
 
     except Exception:
-        logger.error(traceback.format_exc())
+        logging.error(traceback.format_exc())
         ret = 1
     finally:
-        logger.info("shutting down...")
+        logging.info("shutting down...")
         if server_controller is not None:
             try:
+                #comment the following line when doing profiling
                 server_controller.server_kill()
+                pass
             except:
-                logger.error(traceback.format_exc())
+                logging.error(traceback.format_exc())
         if ret != 0:
             sys.exit(ret)
 

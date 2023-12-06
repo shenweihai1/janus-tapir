@@ -174,6 +174,7 @@ int main(int argc, char *argv[]) {
     Log_info("all clients have shut down.");
   }
 
+  sleep(10000);
   for (auto& worker : svr_workers_g) {
     worker.WaitForShutdown();
   }

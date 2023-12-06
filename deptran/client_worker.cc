@@ -135,6 +135,9 @@ void ClientWorker::work() {
            success.load(),
            num_try.load(),
            Config::GetConfig()->get_duration());
+  Log_info("Finish:\nCommit2:\t%u\tClient-id:%d\n",
+           success.load(),
+           cli_id_);
   fflush(stderr);
   fflush(stdout);
   if (ccsi) {
