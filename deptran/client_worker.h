@@ -33,6 +33,8 @@ class ClientWorker {
   rrr::Mutex coordinators_mutex;
   rrr::CondVar coordinators_cond;
   vector<CoordinatorBase*> coos_ = {};
+  
+  std::vector<uint64_t> cli2cli_;
 
   std::atomic<uint32_t> num_txn, success, num_try;
   TxnGenerator * txn_generator_;
@@ -52,7 +54,7 @@ class ClientWorker {
  protected:
   Coordinator* CreateCoordinator(uint16_t offset_id);
   void DispatchRequest(Coordinator *coo);
-  void RequestDone(Coordinator* coo, TxnReply &txn_reply);
+  void RequestDone(Coordinator* coo, uint64_t, TxnReply &txn_reply);
 
   Coordinator* GetFreeCoordinator();
 };

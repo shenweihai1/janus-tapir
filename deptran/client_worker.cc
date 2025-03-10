@@ -4,8 +4,16 @@
 #include "coordinator.h"
 #include "piece.h"
 #include "benchmark_control_rpc.h"
+#include <chrono>
 
 namespace rococo {
+
+uint64_t GetNowInns() {
+    auto now = std::chrono::system_clock::now();
+    auto now_ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(now);
+    auto value = now_ns.time_since_epoch();
+    return (uint64_t) value.count();
+}
 
 ClientWorker::~ClientWorker() {
   if (txn_generator_) {
@@ -17,13 +25,17 @@ ClientWorker::~ClientWorker() {
   coos_.clear();
 }
 
-void ClientWorker::RequestDone(Coordinator* coo, TxnReply &txn_reply) {
+void ClientWorker::RequestDone(Coordinator* coo, uint64_t dispatch_time_, TxnReply &txn_reply) {
   verify(coo != nullptr);
 
   if (txn_reply.res_ == SUCCESS)
     success++;
   num_txn++;
   num_try.fetch_add(txn_reply.n_try_);
+
+  finish_mutex.lock();
+  cli2cli_.push_back(GetNowInns() - dispatch_time_);
+  finish_mutex.unlock();
 
   bool have_more_time = timer_->elapsed() < duration;
 
@@ -140,6 +152,26 @@ void ClientWorker::work() {
            cli_id_);
   fflush(stderr);
   fflush(stdout);
+
+  //for (auto c : coos_) {
+  //  for (int i=0; i<c->cli2cli_.size(); i++){
+  //    cli2cli_.push_back(c->cli2cli_[i]);
+  //  }
+  //}
+
+  std::sort(cli2cli_.begin(), cli2cli_.end());
+  int index = 0;
+  Log_info("Collected lat: %d", cli2cli_.size());
+  index = static_cast<int>(0.99 * (cli2cli_.size() - 1) + 0.5);
+  Log_info("The 99p lat: %fms", cli2cli_[index]/1000.0/1000.0);
+  index = static_cast<int>(0.95 * (cli2cli_.size() - 1) + 0.5);
+  Log_info("The 95p lat: %fms", cli2cli_[index]/1000.0/1000.0);
+  index = static_cast<int>(0.50 * (cli2cli_.size() - 1) + 0.5);
+  Log_info("The 50p lat: %fms", cli2cli_[index]/1000.0/1000.0);
+  index = static_cast<int>(0.1 * (cli2cli_.size() - 1) + 0.5);
+  Log_info("The 10p lat: %fms", cli2cli_[index]/1000.0/1000.0);
+
+
   if (ccsi) {
     Log_info("%s: wait_for_shutdown at client %d", __FUNCTION__, cli_id_);
     ccsi->wait_for_shutdown();
@@ -151,9 +183,11 @@ void ClientWorker::work() {
   void ClientWorker::DispatchRequest(Coordinator *coo) {
     TxnRequest req;
     txn_generator_->GetTxnReq(&req, coo->coo_id_);
+    uint64_t dispatch_time_ = GetNowInns();
     req.callback_ = std::bind(&rococo::ClientWorker::RequestDone,
                               this,
                               coo,
+			      dispatch_time_,
                               std::placeholders::_1);
     coo->do_one(req);
   }

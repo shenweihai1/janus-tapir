@@ -225,7 +225,7 @@ def _enable_tcmalloc(conf):
         conf.env.append_value("LINKFLAGS", "-Wl,--as-needed")
 
 def _enable_jemalloc(conf):
-    if Options.options.tcmalloc:
+    if Options.options.jemalloc:
         Logs.pprint("PINK", "jemalloc enabled 2")
         conf.env.append_value("LINKFLAGS", "-Wl,--no-as-needed")
         conf.env.append_value("LINKFLAGS", "-ljemalloc")
