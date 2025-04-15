@@ -46,3 +46,33 @@ If you are using Rococo as comparison in your project, we prefer that you email 
 ### License
 
 Rococo uses [SATA License](LICENSE.txt) (Star And Thank Author License, originally [here](https://github.com/zTrix/sata-license)), so you have to star this project before any using:) 
+
+## Setup - 2025-04
+We test it on Ubuntu 22.04 and python2.
+```
+git clone https://github.com/shenweihai1/janus-tapir.git
+cd janus-tapir
+git submodule init
+git submodule update
+mkdir -p log
+bash dep.sh
+
+# Update ips.pub
+cd par-dist/
+python generator.py
+```
+
+### Latency experiment
+Just 1 shard; 3 servers with 8 cpu core, and 1 client server with 32 cpu core.
+```
+# Add latency on each server
+#   sudo tc qdisc add dev eth0 root netem delay 50ms
+#   sudo tc qdisc del dev eth0 root
+
+# Please update latency-exp-heavy.yml, latency-exp-light.yml, latency-exp-kill.sh, and latency-exp.sh 
+./latency-exp-kill.sh
+bash latency-exp.sh heavy 100
+
+./latency-exp-kill.sh
+bash latency-exp.sh light 1
+```
