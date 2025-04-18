@@ -62,17 +62,22 @@ cd par-dist/
 python generator.py
 ```
 
-### Latency experiment
+### Latency experiment for Janus
 Just 1 shard; 3 servers with 8 cpu core, and 1 client server with 32 cpu core.
 ```
-# Add latency on each server
+# Add latency on the leader:
 #   sudo tc qdisc add dev eth0 root netem delay 50ms
 #   sudo tc qdisc del dev eth0 root
+#   sudo tc qdisc show dev eth0
 
-# Please update latency-exp-heavy.yml, latency-exp-light.yml, latency-exp-kill.sh, and latency-exp.sh 
+# Please update latency-exp.yml, latency-exp-kill.sh 
+# light
 ./latency-exp-kill.sh
-bash latency-exp.sh heavy 100
+./run.py -f par-dist/latency-exp.yml -f config/brq.yml -f config/rw.yml -f config/concurrent_10.yml -d 30
+bash cmds.sh
 
+# heavy
 ./latency-exp-kill.sh
-bash latency-exp.sh light 1
+./run.py -f par-dist/latency-exp.yml -f config/brq.yml -f config/rw.yml -f config/concurrent_100.yml -d 30
+bash cmds.sh
 ```

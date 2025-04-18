@@ -1,9 +1,9 @@
-cmd2="skill deptran_server; pkill deptran_server; skill deptran_server; pkill deptran_server; skill gdb; sleep 1; "
+cmd2="skill deptran_server; pkill deptran_server; skill deptran_server; pkill deptran_server; skill gdb; "
 
-rep0="127.0.0.1"
-rep1="127.0.0.1"
-rep2="127.0.0.1"
-client0="127.0.0.1"
+rep0="20.81.128.213"
+rep1="20.81.133.172"
+rep2="68.154.32.129"
+client0="172.206.25.207"
 
 ssh $rep0 "$cmd2"
 ssh $rep1 "$cmd2"

@@ -166,10 +166,13 @@ void ClientWorker::work() {
   Log_info("The 99p lat: %fms", cli2cli_[index]/1000.0/1000.0);
   index = static_cast<int>(0.95 * (cli2cli_.size() - 1) + 0.5);
   Log_info("The 95p lat: %fms", cli2cli_[index]/1000.0/1000.0);
+  index = static_cast<int>(0.90 * (cli2cli_.size() - 1) + 0.5);
+  Log_info("The 90p lat: %fms", cli2cli_[index]/1000.0/1000.0);
   index = static_cast<int>(0.50 * (cli2cli_.size() - 1) + 0.5);
   Log_info("The 50p lat: %fms", cli2cli_[index]/1000.0/1000.0);
   index = static_cast<int>(0.1 * (cli2cli_.size() - 1) + 0.5);
   Log_info("The 10p lat: %fms", cli2cli_[index]/1000.0/1000.0);
+  Log_info("The lowest lat: %fms", cli2cli_[0]/1000.0/1000.0);
 
 
   if (ccsi) {
