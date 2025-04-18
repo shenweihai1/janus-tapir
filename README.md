@@ -78,6 +78,6 @@ bash cmds.sh
 
 # heavy
 ./latency-exp-kill.sh
-./run.py -f par-dist/latency-exp.yml -f config/brq.yml -f config/rw.yml -f config/concurrent_100.yml -d 30
+./run.py -f par-dist/latency-exp.yml -f config/brq.yml -f config/rw.yml -f config/concurrent_200.yml -d 30
 bash cmds.sh
 ```
